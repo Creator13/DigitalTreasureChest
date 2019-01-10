@@ -2,6 +2,20 @@
 #include "HDSPA22C_Driver.h"
 #include "Adafruit_MCP23017.h"
 
+/* Character encoding table
+Each bit represents one of the 14 segments of the HDSP-A22C according to the following mapping, from most to least
+significant bit:
+15: C    |   7:  F
+14: DP   |   6:  P
+13: D    |   5:  O
+12: J    |   4:  H
+11: K    |   3:  N
+10: L    |   2:  A
+9:  M    |   1:  B
+8:  E    |   0:  Common anode toggle
+
+The least-significant bit is used to toggle between the two common anodes on the display and it's default value is LOW.
+*/
 const uint16_t characterTable[36][2] = {
     {48, 0b1010000110000110}, //0
     {49, 0b1000000000010010}, //1
@@ -41,7 +55,10 @@ const uint16_t characterTable[36][2] = {
 };
 
 HDSPA22C_Driver::HDSPA22C_Driver() {
+    // Open connection to MCP23017 IO expander
     mcp.begin(0);
+
+    // Configure both IO registers of the MCP23017 to function as outputs
     Wire.beginTransmission(0x20);
     Wire.write(MCP23017_IODIRA);
     Wire.write(0x00);
@@ -51,9 +68,8 @@ HDSPA22C_Driver::HDSPA22C_Driver() {
     Wire.write(0x00);
     Wire.endTransmission();
 
+    // Configure the i2c connection to operate at 400kHz
     Wire.setClock(400000);
-
-    pinMode(3, OUTPUT);
 }
 
 void HDSPA22C_Driver::setCharacter(int char_i, char c) {
@@ -66,7 +82,7 @@ void HDSPA22C_Driver::setCharacter(int char_i, char c) {
 }
 
 void HDSPA22C_Driver::send() {
-    /* Write an empty character (0b1...10 or 0b1...11) to each character before writing data to avoid ghosting.
+    /* Write an empty character (0b1...10 or 0b1...11) to each digit before writing data to avoid ghosting.
     The values sent to the MCP23017 chip need to be inverted, because the internal transistors are wired to ground
     the LEDs.
     The least-significant bit in each word sent to the chip (maps to pin GPA0) is used to toggle which common anode of
