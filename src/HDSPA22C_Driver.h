@@ -1,13 +1,13 @@
-#ifndef DisplayDriver_h
-#define DisplayDriver_h
+#ifndef HDSPA22C_Driver_h
+#define HDSPA22C_Driver_h
 
 #include "Arduino.h"
 #include "Adafruit_MCP23017.h"
 
-class DisplayDriver
+class HDSPA22C_Driver
 {
 public:
-    DisplayDriver();
+    HDSPA22C_Driver();
     void setCharacter(int char_i, char c);
     void send();
     uint16_t resolveCharacter(char c);

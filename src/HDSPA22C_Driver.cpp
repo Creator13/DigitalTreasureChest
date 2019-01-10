@@ -1,5 +1,5 @@
 #include "Arduino.h"
-#include "DisplayDriver.h"
+#include "HDSPA22C_Driver.h"
 #include "Adafruit_MCP23017.h"
 
 const uint16_t characterTable[36][2] = {
@@ -40,7 +40,7 @@ const uint16_t characterTable[36][2] = {
     {45, 0b0001000000001000}  //-
 };
 
-DisplayDriver::DisplayDriver() {
+HDSPA22C_Driver::HDSPA22C_Driver() {
     mcp.begin(0);
     Wire.beginTransmission(0x20);
     Wire.write(MCP23017_IODIRA);
@@ -56,7 +56,7 @@ DisplayDriver::DisplayDriver() {
     pinMode(3, OUTPUT);
 }
 
-void DisplayDriver::setCharacter(int char_i, char c) {
+void HDSPA22C_Driver::setCharacter(int char_i, char c) {
     if (char_i == 0) {
         char1 = c;
     }
@@ -65,16 +65,26 @@ void DisplayDriver::setCharacter(int char_i, char c) {
     }
 }
 
-void DisplayDriver::send() {
+void HDSPA22C_Driver::send() {
+    /* Write an empty character (0b1...10 or 0b1...11) to each character before writing data to avoid ghosting.
+    The values sent to the MCP23017 chip need to be inverted, because the internal transistors are wired to ground
+    the LEDs.
+    The least-significant bit in each word sent to the chip (maps to pin GPA0) is used to toggle which common anode of
+    the display is turned on. This allows to control both digits independently. When the output of pin 0 is LOW, the
+    first digit is on and when the output is HIGH, the second digit will be on. The default value of bit 0 is LOW, so by
+    subtracting 1 off the inverted character encoding, the first digit will be controlled.
+    This function needs to be called continuously. If the function is not called often enough, the second digit will
+    burn brighter than the first.
+    */
     mcp.writeGPIOAB(~0);
     mcp.writeGPIOAB(~resolveCharacter(char1) - 1);
 
-    //delay(10);
     mcp.writeGPIOAB(~1);
     mcp.writeGPIOAB(~resolveCharacter(char2));
 }
 
-uint16_t DisplayDriver::resolveCharacter(char c) {
+uint16_t HDSPA22C_Driver::resolveCharacter(char c) {
+    // Convert O to 0 and S to 5 because they have the same segment mapping
     if (c == 'O') {
         c = '0';
     }
@@ -82,10 +92,10 @@ uint16_t DisplayDriver::resolveCharacter(char c) {
         c = '5';
     }
 
-    //Cast character to int
+    // Cast character to int
     uint16_t intval = c;
 
-    //Find the value by looping over the ascii values in the first col of the character table and return the associated output value.
+    // Find the value by looping over the ascii values in the first col of the character table and return the associated output value.
     for (int i = 0; i < 36; i++) {
         if (characterTable[i][0] == intval) {
             return characterTable[i][1];
