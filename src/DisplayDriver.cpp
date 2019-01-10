@@ -7,7 +7,7 @@ const uint16_t characterTable[36][2] = {
     {49, 0b1000000000010010}, //1
     {50, 0b0011000100001110}, //2
     {51, 0b1011000000000110}, //3
-    {52, 0b1011000010001010}, //4
+    {52, 0b1001000010001010}, //4
     {53, 0b1011000010001100}, //5
     {54, 0b1011000110001100}, //6
     {55, 0b1000000000000110}, //7
@@ -50,6 +50,8 @@ DisplayDriver::DisplayDriver() {
     Wire.write(MCP23017_IODIRB);
     Wire.write(0x00);
     Wire.endTransmission();
+
+    Wire.setClock(400000);
 
     pinMode(3, OUTPUT);
 }
