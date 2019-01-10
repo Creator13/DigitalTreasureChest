@@ -1,18 +1,25 @@
-#include <Arduino.h>
+#include "Arduino.h"
 #include "HDSPA22C_Driver.h"
 
 HDSPA22C_Driver* driver;
 
-const int numReadings = 100;
-int readings[numReadings];
-int readIndex = 0;
-int total = 0;
-int average = 0;
-uint32_t lastReading = millis();
-uint32_t readTimeout = 10;
+// ## Pin configuration ## //
+const int pressurePin = A0;     //
+const int buttonPin = 8;
+const int powerLed = 7;
+const int activityLed = 5;
+
+// ## Buffer for pressure sensor smoothing ## //
+const int numReadings = 100;        // Size of buffer (WARNING: increasing this drastically increases program size)
+int readings[numReadings];          // Array to store readings
+int readIndex = 0;                  // Index pointer
+int total = 0;                      // Sum of buffer values
+int average = 0;                    // Average of buffer values
+uint32_t lastReading = millis();    // Timestamp for each reading
+uint32_t readTimeout = 12;          // Timeout between each reading (lower numbers increase responsiveness)
 
 void readPressure() {
-    int pressure = map(analogRead(A0), 275, 1023, 99, 0);
+    int pressure = map(analogRead(pressurePin), 275, 1023, 99, 0);
 
     if (pressure > 99) {
         pressure = 99;
@@ -50,7 +57,9 @@ void loop() {
     driver->send();
 
     if (millis() > lastReading + readTimeout) {
+        // Read new value
         readPressure();
+        // Update reading timestamp
         lastReading = millis();
     }
 
