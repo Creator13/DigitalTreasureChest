@@ -8,7 +8,7 @@ class HDSPA22C_Driver
 {
 public:
     HDSPA22C_Driver();
-    void setCharacter(int char_i, char c);
+    void setCharacter(byte char_i, char c);
     void send();
     uint16_t resolveCharacter(char c);
 private:

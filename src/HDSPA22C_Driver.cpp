@@ -72,7 +72,7 @@ HDSPA22C_Driver::HDSPA22C_Driver() {
     Wire.setClock(400000);
 }
 
-void HDSPA22C_Driver::setCharacter(int char_i, char c) {
+void HDSPA22C_Driver::setCharacter(byte char_i, char c) {
     if (char_i == 0) {
         char1 = c;
     }
