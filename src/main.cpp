@@ -1,9 +1,18 @@
 #include <Arduino.h>
+#include "DisplayDriver.h"
+
+DisplayDriver* driver;
 
 void setup() {
-  // put your setup code here, to run once:
+    Serial.begin(9600);
+
+    driver = new DisplayDriver();
+    driver->setCharacter(0, 'I');
+    driver->setCharacter(1, 'K');
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+    driver->send();
+    // TODO buffer input and smooth/average
+    map(analogRead(A0), 255, 1023, 99, 0);
 }
