@@ -7,11 +7,12 @@ HDSPA22C_Driver* driver;
 // ## Pin configuration ## //
 const int pressurePin = A0;     // Pressure sensor
 const int buttonPin = 8;        // Action button
-const int powerLed = 7;         // Power led (always on when active == true)
-const int activityLed = 5;      // Multipurpose information led
+const int powerPin = 7;         // Power led (always on when active == true)
+const int activityPin = 6;      // Multipurpose information led
+const int solenoidPin = 10;     // Controls solenoid lock
 
 // ## Program configuration ## //
-uint16_t startupDelay = 3;          // Time 'HI' is shown on the display in seconds
+uint16_t startupDelay = 1500;          // Time 'HI' is shown on the display in milliseconds
 int awakeTime = 30;                 // Time in seconds the device will stay awake
 
 // ## Buffer for pressure sensor smoothing ## //
@@ -39,6 +40,7 @@ void detectButtonPress(void (*callback)());
 void keepAwake();
 void wake();
 void sleep();
+void checkCode();
 
 void setup() {
     Serial.begin(9600);
@@ -47,12 +49,14 @@ void setup() {
     driver->clear();
 
     pinMode(buttonPin, INPUT);
-    pinMode(powerLed, OUTPUT);
-    pinMode(activityLed, OUTPUT);
+    pinMode(powerPin, OUTPUT);
+    pinMode(activityPin, OUTPUT);
 
     // Turn off the builtin led
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, 0);
+
+    wake();
 }
 
 void loop() {
@@ -61,8 +65,6 @@ void loop() {
         detectButtonPress(_wake);
         return;
     }
-
-    driver->send();
 
     if (millis() > lastReading + readTimeout) {
         // Read new value
@@ -73,8 +75,13 @@ void loop() {
         lastReading = millis();
     }
 
+    void (*_checkCode)() = &checkCode;
+    detectButtonPress(_checkCode);
+
     driver->setCharacter(0, average / 10 + '0');
     driver->setCharacter(1, average % 10 + '0');
+
+    driver->send();
 
     if (active) {
         if (millis() > wakeStamp + 1000 * awakeTime) {
@@ -83,19 +90,31 @@ void loop() {
     }
 }
 
+void checkCode() {
+    if (average == 43) {
+        Serial.println("Correct");
+        digitalWrite(activityPin, 1);
+    }
+    else {
+        Serial.println("Incorrect");
+    }
+
+    keepAwake();
+}
+
 void keepAwake() {
     wakeStamp = millis();
 }
 
 void wake() {
-    digitalWrite(powerLed, 1);
+    digitalWrite(powerPin, 1);
 
     driver->setCharacter(0, 'H');
     driver->setCharacter(1, 'I');
 
     wakeStamp = millis();
 
-    while (millis() < wakeStamp + 1000 * startupDelay) {
+    while (millis() < wakeStamp + startupDelay) {
         driver->send();
     }
 
@@ -104,7 +123,7 @@ void wake() {
 }
 
 void sleep() {
-    digitalWrite(powerLed, 0);
+    digitalWrite(powerPin, 0);
 
     active = false;
     driver->clear();
@@ -116,7 +135,7 @@ void sleep() {
 }
 
 int readPressure() {
-    int pressure = map(analogRead(pressurePin), 275, 1023, 99, 0);
+    int pressure = map(analogRead(pressurePin), 300, 1023, 99, 0);
 
     if (pressure > 99) {
         pressure = 99;
