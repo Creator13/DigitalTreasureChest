@@ -99,6 +99,10 @@ void HDSPA22C_Driver::send() {
     mcp.writeGPIOAB(~resolveCharacter(char2));
 }
 
+void HDSPA22C_Driver::clear() {
+    mcp.writeGPIOAB(~0);
+}
+
 uint16_t HDSPA22C_Driver::resolveCharacter(char c) {
     // Convert O to 0 and S to 5 because they have the same segment mapping
     if (c == 'O') {

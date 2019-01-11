@@ -11,6 +11,7 @@ public:
     void setCharacter(byte char_i, char c);
     void send();
     uint16_t resolveCharacter(char c);
+    void clear();
 private:
     char char1;
     char char2;
