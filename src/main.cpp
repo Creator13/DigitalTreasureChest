@@ -12,8 +12,9 @@ const int activityPin = 6;      // Multipurpose information led
 const int solenoidPin = 10;     // Controls solenoid lock
 
 // ## Program configuration ## //
-uint16_t startupDelay = 1500;          // Time 'HI' is shown on the display in milliseconds
+int startupDelay = 1500;            // Time 'HI' is shown on the display in milliseconds
 int awakeTime = 30;                 // Time in seconds the device will stay awake
+int unlockTime = 5;
 
 // ## Buffer for pressure sensor smoothing ## //
 const int numReadings = 100;        // Size of buffer (WARNING: increasing this drastically increases program size)
@@ -28,6 +29,13 @@ uint32_t readTimeout = 12;          // Timeout between each reading (lower numbe
 bool active = false;
 unsigned long wakeStamp = millis(); // Timestamp of the last time the device was woken up.
 
+short lockSize = 3;
+const int code[] = {43, 88, 16};          // Lock code
+bool correct[] = {false, false, false};  // Keep track of valid inputs
+
+bool unlocked = false;
+unsigned long unlockStamp = millis();
+
 // # Button press state variables
 bool buttonPressed = false;
 unsigned long pressTimeout = 10; //timeout for new buttonpress in ms
@@ -41,6 +49,8 @@ void keepAwake();
 void wake();
 void sleep();
 void checkCode();
+void lock();
+void unlock();
 
 void setup() {
     Serial.begin(9600);
@@ -66,6 +76,25 @@ void loop() {
         return;
     }
 
+    if (unlocked) {
+        digitalWrite(activityPin, 1);
+        digitalWrite(solenoidPin, 1);
+
+        int timePassed = (millis() - unlockStamp) / 1000;
+
+        driver->setCharacter(0, (unlockTime - timePassed) / 10 + '0');
+        driver->setCharacter(1, (unlockTime - timePassed) % 10 + '0');
+
+        driver->send();
+
+        if (millis() > unlockTime * 1000 + unlockStamp) {
+            lock();
+        }
+
+        return;
+    }
+
+
     if (millis() > lastReading + readTimeout) {
         // Read new value
         if (readPressure() > 0) {
@@ -90,13 +119,40 @@ void loop() {
     }
 }
 
+void unlock() {
+    unlocked = true;
+    unlockStamp = millis();
+
+    digitalWrite(activityPin, 1);
+    digitalWrite(solenoidPin, 1);
+}
+
+void lock() {
+    unlocked = false;
+    digitalWrite(activityPin, 0);
+    digitalWrite(solenoidPin, 0);
+
+    sleep();
+}
+
 void checkCode() {
-    if (average == 43) {
-        Serial.println("Correct");
-        digitalWrite(activityPin, 1);
+    for (int i = 0; i < lockSize; i++) {
+        if (!correct[i]) {
+            if (average == code[i]) {
+                correct[i] = true;
+            }
+            else {
+                // if code is wrong, user must start over.
+                correct[0] = false;
+                correct[1] = false;
+                correct[2] = false;
+            }
+        }
     }
-    else {
-        Serial.println("Incorrect");
+
+    // If last value is correct, the chest is unlocked.
+    if (correct[2]) {
+        unlock();
     }
 
     keepAwake();
@@ -132,10 +188,11 @@ void sleep() {
     for (int i = 0; i < numReadings; i++) {
         readings[i] = 0;
     }
+    total = 0;
 }
 
 int readPressure() {
-    int pressure = map(analogRead(pressurePin), 300, 1023, 99, 0);
+    int pressure = map(analogRead(pressurePin), 0, 750, 0, 99);
 
     if (pressure > 99) {
         pressure = 99;
