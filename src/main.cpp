@@ -12,9 +12,12 @@ const int activityPin = 6;      // Multipurpose information led
 const int solenoidPin = 10;     // Controls solenoid lock
 
 // ## Program configuration ## //
-int startupDelay = 1500;            // Time 'HI' is shown on the display in milliseconds
-int awakeTime = 30;                 // Time in seconds the device will stay awake
-int unlockTime = 5;
+const int startupDelay = 1500;        // Time 'HI' is shown on the display in milliseconds
+const int awakeTime = 30;             // Time in seconds the device will stay awake
+const int unlockTime = 5;
+
+const int shortFlash = 30;
+const int longFlash = 250;
 
 // ## Buffer for pressure sensor smoothing ## //
 const int numReadings = 100;        // Size of buffer (WARNING: increasing this drastically increases program size)
@@ -27,14 +30,18 @@ uint32_t readTimeout = 12;          // Timeout between each reading (lower numbe
 
 // ## State variables ## //
 bool active = false;
-unsigned long wakeStamp = millis(); // Timestamp of the last time the device was woken up.
+unsigned long wakeStamp = millis();         // Timestamp of the last time the device was woken up.
 
 short lockSize = 3;
-const int code[] = {43, 88, 16};          // Lock code
-bool correct[] = {false, false, false};  // Keep track of valid inputs
+const int code[] = {43, 88, 16};            // Lock code
+bool correct[] = {false, false, false};     // Keep track of valid inputs
 
 bool unlocked = false;
 unsigned long unlockStamp = millis();
+
+int activityFlashes = 1;
+unsigned long activityStamp = millis();
+int flashTime = 0;
 
 // # Button press state variables
 bool buttonPressed = false;
@@ -51,6 +58,7 @@ void sleep();
 void checkCode();
 void lock();
 void unlock();
+void shortActFlash();
 
 void setup() {
     Serial.begin(9600);
@@ -74,6 +82,15 @@ void loop() {
         void (*_wake)() = &wake;
         detectButtonPress(_wake);
         return;
+    }
+
+    if (activityFlashes > 0) {
+        digitalWrite(activityPin, 1);
+
+        if (millis() > activityStamp + flashTime) {
+            digitalWrite(activityPin, 0);
+            activityFlashes--;
+        }
     }
 
     if (unlocked) {
@@ -119,6 +136,18 @@ void loop() {
     }
 }
 
+void shortActFlash() {
+    activityFlashes = 1;
+    activityStamp = millis();
+    flashTime = shortFlash;
+}
+
+void longActFlash() {
+    activityFlashes = 1;
+    activityStamp = millis();
+    flashTime = longFlash;
+}
+
 void unlock() {
     unlocked = true;
     unlockStamp = millis();
@@ -136,10 +165,12 @@ void lock() {
 }
 
 void checkCode() {
+    // TODO fix this fucking lock because its broke af
     for (int i = 0; i < lockSize; i++) {
         if (!correct[i]) {
             if (average == code[i]) {
                 correct[i] = true;
+                shortActFlash();
             }
             else {
                 // if code is wrong, user must start over.
