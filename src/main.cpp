@@ -20,7 +20,7 @@ const int shortFlash = 30;
 const int longFlash = 250;
 
 // ## Buffer for pressure sensor smoothing ## //
-const int numReadings = 100;        // Size of buffer (WARNING: increasing this drastically increases program size)
+const int numReadings = 150;        // Size of buffer (WARNING: increasing this drastically increases program size)
 int readings[numReadings];          // Array to store readings
 int readIndex = 0;                  // Index pointer
 int total = 0;                      // Sum of buffer values
@@ -32,8 +32,8 @@ uint32_t readTimeout = 12;          // Timeout between each reading (lower numbe
 bool active = false;
 unsigned long wakeStamp = millis();         // Timestamp of the last time the device was woken up.
 
-short lockSize = 3;
-const int code[] = {43, 88, 16};            // Lock code
+short comboLength = 3;
+const int code[] = {43, 50, 99};            // Lock code
 bool correct[] = {false, false, false};     // Keep track of valid inputs
 
 bool unlocked = false;
@@ -166,7 +166,7 @@ void lock() {
 
 void checkCode() {
     // TODO fix this fucking lock because its broke af
-    for (int i = 0; i < lockSize; i++) {
+    for (int i = 0; i < comboLength; i++) {
         if (!correct[i]) {
             if (average == code[i]) {
                 correct[i] = true;
@@ -178,6 +178,9 @@ void checkCode() {
                 correct[1] = false;
                 correct[2] = false;
             }
+
+            // Loop stops after the first empty combination position was found.
+            break;
         }
     }
 
@@ -214,6 +217,11 @@ void sleep() {
 
     active = false;
     driver->clear();
+
+    // Reset lock
+    for (int i = 0; i < comboLength; i++) {
+        correct[i] = false;
+    }
 
     // Reset array of readings to preserve data integrity (fancy words for 'restarting the device')
     for (int i = 0; i < numReadings; i++) {
